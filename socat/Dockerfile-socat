@@ -1,0 +1,41 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/socat-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libwrap0 ldap-utils;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+    echo "TLS_REQCERT allow" >> /etc/ldap/ldap.conf;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/socat/bin/socat-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv socat-$VER socat;\
+  chown -R root:root socat-$VER;\
+  mkdir -pv etc/socat;\
+  socat -V;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

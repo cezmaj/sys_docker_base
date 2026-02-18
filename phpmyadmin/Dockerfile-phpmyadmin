@@ -1,0 +1,31 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG TYPE
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  cd /usr/local;\
+  mkdir -pv phpmyadmin-$VER;\
+  ln -snfv phpmyadmin-$VER phpmyadmin;\
+  curl -sS -L -k -f http://repo/sw/opensource/phpmyadmin/phpMyAdmin-$VER-english.tar.gz | tar xzf - --strip-components=1 -C phpmyadmin;\
+  mkdir -pv /usr/local/etc/phpmyadmin;\
+  touch /usr/local/etc/phpmyadmin/config.inc.php;\
+  ln -snfv /usr/local/etc/phpmyadmin/config.inc.php phpmyadmin/;\
+  grep public phpmyadmin/libraries/classes/Version.php;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.type = ${TYPE:-[none]}";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

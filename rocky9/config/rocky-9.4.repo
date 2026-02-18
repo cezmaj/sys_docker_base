@@ -1,0 +1,15 @@
+[baseos-9.4-dvd1]
+name=baseos-9.4-dvd1
+baseurl=http://yum.dc.local/sw/linux/rocky/9.4/x86_64/dvd1/BaseOS
+[appstream-9.4-dvd1]
+name=appstream-9.4-dvd1
+baseurl=http://yum.dc.local/sw/linux/rocky/9.4/x86_64/dvd1/AppStream
+[baseos-9.4-os]
+name=baseos-9.4-os
+baseurl=http://yum.dc.local/sw/linux/rocky/9.4/x86_64/os/BaseOS
+[appstream-9.4-os]
+name=appstream-9.4-os
+baseurl=http://yum.dc.local/sw/linux/rocky/9.4/x86_64/os/AppStream
+[crb-9.4-os]
+name=crb-9.4-os
+baseurl=http://yum.dc.local/sw/linux/rocky/9.4/x86_64/os/CRB

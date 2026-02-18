@@ -1,0 +1,55 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/netxms-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libpcre2-dev pcre2-utils snmp libmicrohttpd-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN rocky; then\
+    yum -y install pcre pcre-utf32;\
+    yum clean all;\
+  fi;\
+  groupadd -g 486 netxms;\
+  useradd -u 486 -g 486 -m -s /bin/bash netxms;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/netxms/bin/netxms-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv netxms-$VER netxms;\
+  chown -R root:root netxms-$VER;\
+  mkdir -pv etc/netxms;\
+  ln -sv /usr/local/etc/netxms/netxmsd.conf /etc;\
+  mkdir -pv /var/opt/netxms /var/log/netxms;\
+  chown -R netxms:netxms /var/opt/netxms /var/log/netxms;\
+  getcap netxms/bin/netxmsd;\
+  setcap cap_net_bind_service,cap_net_raw=ep netxms/bin/netxmsd;\
+  getcap netxms/bin/netxmsd;\
+  getcap /usr/bin/ping;\
+  setcap cap_net_raw=ep /usr/bin/ping;\
+  getcap /usr/bin/ping;\
+  ls -l /usr/local;\
+  netxmsd -v || true;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ ! -f /tmp/vers.txt ] || (cat /tmp/vers.txt && rm -f /tmp/vers.txt);\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

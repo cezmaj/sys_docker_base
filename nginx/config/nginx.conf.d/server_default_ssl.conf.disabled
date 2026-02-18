@@ -1,0 +1,9 @@
+server {
+  listen 8443 ssl default_server;
+  server_name default;
+
+  location = / {
+    add_header Content-Type text/plain;
+    return 200 'default.dc.local';
+  }
+}

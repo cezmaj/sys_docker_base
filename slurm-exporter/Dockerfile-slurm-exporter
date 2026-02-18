@@ -1,0 +1,32 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/slurm-exporter-$VER:$PATH
+
+RUN set -ex;\
+  cd /usr/local;\
+  mkdir -pv slurm-exporter-$VER;\
+  ln -snfv slurm-exporter-$VER slurm-exporter;\
+  curl -sS -L -k -f -o slurm-exporter/slurm-exporter http://repo/sw/opensource/prometheus/bin/slurm-exporter_${VER}_linux_amd64;\
+  chown -R root:root slurm-exporter-$VER;\
+  chmod a+x slurm-exporter/slurm-exporter;\
+  slurm-exporter --version || true;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

@@ -1,0 +1,1 @@
+deb [trusted=yes] http://apt/sw/linux/debian/10.10/x86_64/updates ./

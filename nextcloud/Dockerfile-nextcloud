@@ -1,0 +1,40 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/nextcloud-$VER:$PATH
+
+RUN set -ex;\
+  if expr match $OSN rocky; then\
+    yum -y update;\
+    yum -y install bzip2;\
+    yum clean all;\
+  fi;\
+  cd /usr/local;\
+  mkdir -pv nextcloud-$VER;\
+  ln -snfv nextcloud-$VER nextcloud;\
+  curl -sS -L -k -f http://repo/sw/opensource/nextcloud/src/nextcloud-$VER.tar.bz2 | tar xjf - --strip-components=1 -C nextcloud;\
+  chown -R root:root nextcloud-$VER;\
+  mv -v nextcloud/config nextcloud/config.ORG;\
+  mkdir -pv /usr/local/etc/nextcloud;\
+  touch /usr/local/etc/nextcloud/CAN_INSTALL;\
+  chown none:none /usr/local/etc/nextcloud;\
+  chown none:none nextcloud/apps;\
+  ln -sv /usr/local/etc/nextcloud nextcloud/config;\
+  ls -l /usr/local;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;

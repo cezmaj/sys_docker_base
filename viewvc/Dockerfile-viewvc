@@ -1,0 +1,54 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG TYPE
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    apt-get update;\
+    apt-get -yqq install rcs cvs subversion cvsgraph;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  groupadd -g 321 git;\
+  useradd -u 321 -g 321 -m -s /bin/bash git;\
+  usermod -a -G git none;\
+  cd /usr/local;\
+  V=$(curl -s http://repo/sw/opensource/python/bin/version.txt | grep ^python-2.7: | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/python/bin/python-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv python-$V python;\
+  ln -snfv /usr/local/python/bin/python /usr/bin;\
+  echo "info.vers = python/$V" >> /tmp/vers.txt;\
+  cd /tmp;\
+  curl -sS -L -k -f http://repo/sw/opensource/viewvc/viewvc-$VER.tar.gz | tar xzf -;\
+  cd viewvc-$VER;\
+  ./viewvc-install --prefix=/usr/local/viewvc-$VER --destdir=;\
+  rm -rf viewvc-$VER;\
+  cd /usr/local;\
+  ln -snfv viewvc-$VER viewvc;\
+  cd viewvc;\
+  mkdir -pv /usr/local/etc/viewvc;\
+  ln -snfv /usr/local/etc/viewvc/viewvc.conf .;\
+  cd /usr/local/viewvc/templates/include;\
+  mv -v header.ezt header.ezt.ORG;\
+  cat header.ezt.ORG | grep -v viewvc-logo.png > header.ezt;\
+  ls -l /usr/local;\
+  /usr/local/viewvc-$VER/bin/cgi/viewvc.cgi | grep -i powered;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.type = ${TYPE:-[none]}";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] || (cat /tmp/vers.txt && rm -f /tmp/vers.txt);\
+ ) > /version.d/version-$REPO.txt;

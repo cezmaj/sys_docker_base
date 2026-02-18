@@ -1,0 +1,49 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/squid-$VER/sbin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libxml2 libltdl7;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN centos; then\
+    yum -y install libtool-ltdl nettle;\
+    yum clean all;\
+  fi;\
+  groupadd -g 23 squid;\
+  useradd -u 23 -g 23  -m -s /bin/bash squid;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/squid/bin/squid-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv squid-$VER squid;\
+  chown -R root:root squid-$VER;\
+  mkdir -pv etc/squid;\
+  mkdir -pv /var/opt/squid /var/log/squid /var/cache/squid;\
+  chown -R squid:squid /var/opt/squid /var/log/squid /var/cache/squid;\
+  ls -l /usr/local;\
+  squid -v;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+USER squid
+CMD ["/cmd.sh"]

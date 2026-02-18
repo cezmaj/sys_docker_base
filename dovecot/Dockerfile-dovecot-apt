@@ -1,0 +1,43 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  groupadd -g 5000 vmail;\
+  useradd -g 5000 -u 5000 -m -s /bin/bash vmail;\
+  groupadd -g 850 dovecot;\
+  groupadd -g 851 dovenull;\
+  useradd -u 850 -g 850 -m -c "" dovecot;\
+  useradd -u 851 -g 851 -m -c "" dovenull;\
+  export DEBIAN_FRONTEND=noninteractive;\
+  apt-get update;\
+  apt-get -yqq install dovecot-core dovecot-imapd dovecot-pop3d dovecot-ldap;\
+  apt-get clean;\
+  rm -rf /var/lib/apt/lists/*;\
+  mkdir -pv /var/opt/vmail;\
+  chown vmail:vmail /var/opt/vmail;\
+  chmod 770 /var/opt/vmail;\
+  S=zlocal-dovecot.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101008-mail_dovecot/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  dovecot --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

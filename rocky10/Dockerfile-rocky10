@@ -1,0 +1,98 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG TYPE
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV LANG=en_US.utf8
+ENV TZ=Europe/Warsaw
+
+ENV OS_NAME=rocky10
+ENV OS_ARCH=x86_64
+
+ENV OSN=rocky10
+ENV OSA=x86_64
+
+ADD config/rocky-$VER.repo /etc/yum.repos.d/
+
+RUN set -ex;\
+  cd /etc/yum.repos.d;\
+  sed -i.ORG 's/enabled=1/enabled=0/' *.repo;\
+  rpm --import /etc/pki/rpm-gpg/*;\
+  yum -y update;\
+  yum -y --allowerasing install net-tools iproute nmap lsof strace telnet git curl wget bind-utils which unzip python3 python3-pip;\
+  yum -y --allowerasing install coreutils procps-ng iputils glibc-langpack-en environment-modules;\
+  yum -y --allowerasing install yum-utils createrepo tree;\
+  yum clean all;\
+  mkdir -pv /usr/local/etc/modulefiles;\
+  S=zlocal-0001.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001590-rocky10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-0002.bash;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001590-rocky10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-0010.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001590-rocky10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-ip.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001590-rocky10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-process.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001590-rocky10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-readme.bash;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001500-linux_admin/files/$S\
+    && (chmod a+x /etc/profile.d/$S && mkdir -p /usr/local/etc/doc)\
+    || (echo Script $S not available);\
+  S=zlocal-env-module.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101630-env_module/files/$S\
+    && (chmod a+x /etc/profile.d/$S && mkdir -p /usr/local/etc/doc)\
+    || (echo Script $S not available);\
+  S=zlocal-cdev-image.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/${S} http://repo/pkb/pb/playbooks/999210-cdev/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  groupadd -g 666 none;\
+  useradd -u 666 -g 666 -s /bin/bash -m none;\
+  cat /etc/redhat-release;
+
+RUN set -ex;\
+  pip3 install --no-index --trusted-host repo --find-links=http://repo/sw/opensource/python-modules/supervisor/ supervisor;\
+  ln -sv /usr/local/etc/supervisord.conf /etc;\
+  mkdir -pv /usr/local/etc/supervisord.d;\
+  S=zlocal-supervisor.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/008330-supervisor/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  supervisord --version;
+
+ADD config/supervisord.conf /usr/local/etc
+
+RUN set -ex;\
+  curl -sS -L -k -f -o /tini http://repo/sw/opensource/tini/bin/tini-amd64-current;\
+  chmod a+x /tini;\
+  /tini --version;
+
+RUN set -ex;\
+  mkdir -pv /cmd.d /version.d;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.type = ${TYPE:-[none]}";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]* /cmd.d/
+ADD scripts/cmd.sh /

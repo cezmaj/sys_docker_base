@@ -1,0 +1,42 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/nexus/nexus-$VER/bin:$PATH
+
+RUN set -ex;\
+  groupadd -g 480 nexus;\
+  useradd -u 480 -g 480 -c "Nexus Repository Manager" -m nexus;\
+  mkdir -pv /usr/local/nexus;\
+  cd /usr/local/nexus;\
+  mkdir -pv nexus-$VER;\
+  ln -snfv nexus-$VER nexus;\
+  if [ "$(echo $FROM|cut -d: -f2)" = "11" ]; then\
+    curl -sS -L -k -f http://repo/sw/opensource/nexus/bin/nexus-$VER-java11-unix.tar.gz | tar xzf - --strip-components=1 -C nexus;\
+  elif [ "$(echo $FROM|cut -d: -f2)" = "1.8" ]; then\
+    curl -sS -L -k -f http://repo/sw/opensource/nexus/bin/nexus-$VER-java8-unix.tar.gz | tar xzf - --strip-components=1 -C nexus;\
+  else\
+    curl -sS -L -k -f http://repo/sw/opensource/nexus/bin/nexus-$VER-linux-x86_64.tar.gz | tar xzf - --strip-components=1 -C nexus;\
+  fi;\
+  sed -i.ORG 's%#run_as_user=.*%run_as_user="nexus"%' /usr/local/nexus/nexus/bin/nexus;\
+  sed -i.ORG 's%../sonatype-work%/var/opt%' /usr/local/nexus/nexus/bin/nexus.vmoptions;\
+  mkdir -pv /var/opt/nexus3;\
+  chown -R nexus:nexus /var/opt/nexus3;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

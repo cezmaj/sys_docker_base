@@ -1,0 +1,57 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/zoneminder-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install libmariadb-dev libmariadb-dev-compat;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install libclass-dbi-mysql-perl libdate-manip-perl libsys-mmap-perl libsys-meminfo-perl libnumber-bytes-human-perl;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install libsoap-lite-perl libxml-libxml-perl libclass-std-fast-perl libsoap-wsdl-perl libdata-uuid-perl;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install libio-socket-multicast-perl libdatetime-perl;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install libpolkit-qt5-1-dev libpolkit-agent-1-dev;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install libvlc-dev libvncserver-dev libavcodec-dev libavdevice-dev;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install libjwt-dev libpcre2-dev ffmpeg;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install mariadb-client;\
+    apt-get -yqq --no-install-recommends --no-install-suggests install v4l-utils zip;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/zoneminder/bin/zoneminder-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv zoneminder-$VER zoneminder;\
+  ln -snfv /usr/local/zoneminder/perl5/vendor_perl /usr/local/lib/site_perl;\
+  chown -R root:root zoneminder-$VER;\
+  mkdir -pv /var/opt/zoneminder/cache;\
+  mkdir -pv /var/opt/zoneminder/events;\
+  mkdir -pv /var/opt/zoneminder/export;\
+  mkdir -pv /var/opt/zoneminder/images;\
+  mkdir -pv /var/opt/zoneminder/swap;\
+  mkdir -pv /var/opt/zoneminder/log;\
+  mkdir -pv /var/opt/zoneminder/tmp;\
+  chown -Rv none:none /var/opt/zoneminder;\
+  ls -l /usr/local;\
+  zmc --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+ADD supervisord/supervisord-* /usr/local/etc/supervisord.d/

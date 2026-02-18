@@ -1,0 +1,41 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+ENV PATH /usr/local/gcc-$VER/bin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/gcc-$VER/lib64:$LD_LIBRARY_PATH
+ENV MANPATH /usr/local/gcc-$VER/share/man:$MANPATH
+
+RUN set -ex;\
+  if expr match $OSN centos; then\
+    yum -y install make automake autoconf libtool bison flex strace pkgconfig gettext rpm-build binutils;\
+    yum clean all;\
+  fi;\
+  cd /usr/local;\
+  if expr match $VER 4.8; then\
+    yum -y install gcc gcc-c++;\
+    yum clean all;\
+    ln -snfv /usr gcc-$VER;\
+  else\
+    curl -sS -L -k -f http://repo/sw/opensource/gcc/bin/gcc-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+    chown -R root:root gcc-$VER;\
+  fi;\
+  ln -snfv gcc-$VER gcc-${VER%%.*};\
+  ls -l /usr/local;\
+  gcc -v;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

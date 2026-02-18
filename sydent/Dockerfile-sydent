@@ -1,0 +1,41 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/sydent-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install build-essential python3-dev libffi-dev sqlite3 libssl-dev python3-virtualenv libxslt1-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/matrix/bin/sydent-$VER-$OSN-venv.tar.gz | tar xzf -;\
+  ln -snfv sydent-$VER sydent;\
+  ln -snfv /usr/local/sydent/bin/activate /usr/local/bin;\
+  ln -snfv /usr/local/sydent/bin/sydent /usr/local/bin;\
+  mkdir -pv /var/opt/sydent;\
+  chown none:none sydent-$VER /var/opt/sydent;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

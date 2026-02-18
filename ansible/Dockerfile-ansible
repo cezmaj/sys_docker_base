@@ -1,0 +1,38 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/ansible-$VER/bin:$PATH
+
+RUN set -ex;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/ansible/bin/ansible-$VER-$OSN-venv.tar.gz | tar xzf -;\
+  chown -R root:root ansible-$VER;\
+  ln -snfv ansible-$VER ansible;\
+  mkdir -pv /var/tmp/sw;\
+  S=zlocal-ansible.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101420-ansible/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-pkb.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/999030-work_pkb/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  which ansible-community && ansible-community --version;\
+  ansible --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

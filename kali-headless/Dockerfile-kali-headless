@@ -1,0 +1,53 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+ARG APT_URI
+ARG APT_PROXY
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV LANG=en_US.utf8
+ENV TZ=Europe/Warsaw
+
+ENV OS_NAME=kali
+ENV OS_ARCH=x86_64
+ENV OS_CODE=kali-rolling
+
+ENV OSN=kali
+ENV OSA=x86_64
+ENV OSC=kali-rolling
+
+RUN set -ex;\
+  if [ ! -z "$APT_URI" ]; then\
+    echo "deb $APT_URI kali-rolling main contrib non-free non-free-firmware" > /etc/apt/sources.list.d/kali-rolling.list;\
+    echo 'Acquire::https::Verify-Peer "false";' > /etc/apt/apt.conf.d/99https-verify-peer;\
+    echo 'Acquire::https::Verify-Host "false";' > /etc/apt/apt.conf.d/99https-verify-host;\
+  fi;\
+  if [ ! -z "$APT_PROXY" ]; then\
+    echo "Acquire::http::proxy \"$APT_PROXY\";" > /etc/apt/apt.conf.d/02proxy;\
+  fi;\
+  echo "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware" > /etc/apt/sources.list.d/kali-rolling-official.list.disabled;\
+  sed -i.b$(date +%Y%m%d) -e 's/^deb/#deb/' /etc/apt/sources.list;\
+  export DEBIAN_FRONTEND=noninteractive;\
+  apt-get update;\
+  apt-get -yqq full-upgrade -y;\
+  apt-get -yqq install kali-linux-headless;\
+  apt-get clean;\
+  rm -rf /var/lib/apt/lists/*;\
+  localedef -i en_US -c -f UTF-8 en_US.UTF-8;\
+  cat /etc/os-release;\
+  cat /etc/debian_version;
+
+RUN set -ex;\
+  mkdir -pv /cmd.d /version.d;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

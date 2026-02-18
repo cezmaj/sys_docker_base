@@ -1,0 +1,40 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/grafana-$VER/bin:$PATH
+
+RUN set -ex;\
+  groupadd -g 472 grafana;\
+  useradd -u 472 -g 472 -c "Grafana" -m -s /bin/bash grafana;\
+  cd /usr/local;\
+  mkdir -pv grafana-$VER;\
+  ln -snfv grafana-$VER grafana;\
+  curl -sS -L -k -f http://repo/sw/opensource/grafana/bin/grafana-$VER.linux-amd64.tar.gz | tar xzf - --strip-components=1 -C grafana;\
+  mkdir -pv etc/grafana/provisioning;\
+  cd etc/grafana/provisioning;\
+  mkdir -pv access-control dashboards datasources notifiers plugins;\
+  mkdir -pv /var/opt/grafana /var/log/grafana;\
+  chown -R grafana:grafana /var/opt/grafana /var/log/grafana;\
+  ls -l /usr/local;\
+  grafana -v;
+
+ADD config/grafana.ini /usr/local/etc/grafana
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

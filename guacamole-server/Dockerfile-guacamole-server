@@ -1,0 +1,42 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/guacamole-server-$VER/bin:/usr/local/guacamole-server-$VER/sbin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/guacamole-server/lib
+
+STOPSIGNAL SIGKILL
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq --no-install-recommends install ffmpeg libwebsockets-dev libtelnet-dev libcairo2-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/server/guacamole-server-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv guacamole-server-$VER guacamole-server;\
+  chown -R root:root guacamole-server-$VER;\
+  mkdir -pv /etc/guacamole;\
+  ls -l /usr/local;\
+  guacd -v;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

@@ -1,0 +1,32 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/etcd-$VER:$PATH
+
+RUN set -ex;\
+  groupadd -g 470 etcd;\
+  useradd -u 470 -g 470 -c "etcd" -m -s /bin/bash etcd;\
+  cd /usr/local;\
+  mkdir -pv etcd-$VER;\
+  ln -snfv etcd-$VER etcd;\
+  curl -sS -L -k -f http://repo/sw/opensource/etcd/bin/etcd-v$VER-linux-amd64.tar | tar xvf - --strip-components=1 -C etcd etcd-v$VER-linux-amd64/etcd etcd-v$VER-linux-amd64/etcdctl;\
+  ls -l /usr/local;\
+  etcd --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+CMD ["/cmd.sh"]

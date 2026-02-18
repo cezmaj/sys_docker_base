@@ -1,0 +1,77 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG TYPE
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/nginx-$VER/sbin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/fcgi/lib
+
+RUN set -ex;\
+  mv -v /cmd.d/190-ep-supervisord.sh.disabled /cmd.d/190-ep-supervisord.sh;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libyajl2 libgeoip1 liblua5.4-0;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/nginx/bin/nginx-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv nginx-$VER nginx;\
+  chown -R root:root nginx-$VER;\
+  V=$(curl -s http://repo/sw/opensource/fcgi/bin/version.txt | grep ^fcgi: | tail -1 | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/fcgi/bin/fcgi-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv fcgi-$V fcgi;\
+  ln -snfv /usr/local/fcgi/bin/cgi-fcgi /usr/local/bin;\
+  echo "info.vers = fcgi/$V" >> /tmp/vers.txt;\
+  V=$(curl -s http://repo/sw/opensource/fcgiwrap/bin/version.txt | grep ^fcgiwrap: | tail -1 | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/fcgiwrap/bin/fcgiwrap-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv fcgiwrap-$V fcgiwrap;\
+  ln -snfv /usr/local/fcgiwrap/sbin/fcgiwrap /usr/local/bin;\
+  echo "info.vers = fcgiwrap/$V" >> /tmp/vers.txt;\
+  V=$(curl -s http://repo/sw/opensource/modsecurity/bin/version.txt | grep ^modsecurity: | tail -1 | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/modsecurity/bin/modsecurity-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv modsecurity-$V modsecurity;\
+  echo "info.vers = modsecurity/$V" >> /tmp/vers.txt;\
+  V=$(curl -s http://repo/sw/opensource/modsecurity/src/version.txt | grep ^coreruleset: | tail -1 | awk '{print $2}');\
+  mkdir -pv coreruleset-$V;\
+  ln -snfv coreruleset-$V coreruleset;\
+  curl -sS -L -k -f http://repo/sw/opensource/modsecurity/src/coreruleset-$V.tar.gz | tar xzf - --strip-components=1 -C coreruleset;\
+  echo "info.vers = coreruleset/$V" >> /tmp/vers.txt;\
+  mkdir -pv /var/opt/nginx;\
+  chown none:none /var/opt/nginx;\
+  S=zlocal-nginx.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101610-nginx/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-php-fpm.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101600-php/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script ${S} not available);\
+  ls -l /usr/local;\
+  nginx -V 2>&1 |  sed 's/--/\n  --/g';
+
+ADD config/ /usr/local/nginx/conf/
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.type = ${TYPE:-[none]}";\
+  echo "info.from = $FROM";\
+  [ ! -f /tmp/vers.txt ] || (cat /tmp/vers.txt && rm -f /tmp/vers.txt);\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+ADD supervisord/supervisord-* /usr/local/etc/supervisord.d/
+CMD ["/cmd.sh"]

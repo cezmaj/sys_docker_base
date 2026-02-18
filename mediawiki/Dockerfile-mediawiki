@@ -1,0 +1,35 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/mediawiki-$VER/maintenance:$PATH
+
+RUN set -ex;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/mediawiki/${VER%.*}/mediawiki-$VER.tar.gz | tar xzf -;\
+  ln -snfv mediawiki-$VER mediawiki;\
+  cd mediawiki;\
+  mv -v images images.ORG;\
+  ln -sv /var/opt/mediawiki/images .;\
+  ln -sv /var/opt/mediawiki/resources/local resources/;\
+  ln -sv /var/opt/mediawiki/LocalSettings.php .;\
+  grep MW_VERSION /usr/local/mediawiki/includes/Defines.php;
+
+ADD php7/php.ini /usr/local/etc/php7
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/

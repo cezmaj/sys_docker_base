@@ -1,0 +1,8 @@
+[program:bacula-sd]
+command=bacula-sd -f -c /usr/local/etc/bacula/bacula-sd.conf -P -m -d 99
+user=root
+autostart=true
+autorestart=true
+redirect_stderr=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0

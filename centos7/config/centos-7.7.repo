@@ -1,0 +1,9 @@
+[everything-7.7]
+name=everything-7.7
+baseurl=http://repo/sw/linux/centos/7.7/x86_64/dvd2
+sslverify=0
+
+[updates-7.7]
+name=updates-7.7
+baseurl=http://repo/sw/linux/centos/7.7/x86_64/updates
+sslverify=0

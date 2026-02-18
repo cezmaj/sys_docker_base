@@ -1,0 +1,78 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/nagios-$VER/bin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/fcgi/lib:$LD_LIBRARY_PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libboost-all-dev bsdextrautils snmp;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN centos; then\
+    yum install boost-system libtool-ltdl -y;\
+    yum clean all;\
+  fi;\
+  groupadd -g 477 nagios;\
+  useradd -u 477 -g 477 -c 'Nagios Monitoring System' -m -s /bin/bash nagios;\
+  groupadd -g 478 nagcmd;\
+  usermod -a -G nagcmd nagios;\
+  usermod -a -G nagcmd,nagios none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/nagios/bin/nagios-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv nagios-$VER nagios;\
+  V=$(curl -s http://repo/sw/opensource/nagios/bin/version.txt | grep ^nagios-plugins: | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/nagios/bin/nagios-plugins-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv nagios-plugins-$V nagios-plugins;\
+  echo "info.vers = nagios-plugins/$V" >> /tmp/vers.txt;\
+  V=$(curl -s http://repo/sw/opensource/nagios/bin/version.txt | grep ^nagios-nrpe: | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/nagios/bin/nagios-nrpe-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv nagios-nrpe-$V nagios-nrpe;\
+  echo "info.vers = nagios-nrpe/$V" >> /tmp/vers.txt;\
+  V=$(curl -s http://repo/sw/opensource/mk-livestatus/bin/version.txt | grep ^mk-livestatus: | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/mk-livestatus/bin/mk-livestatus-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv mk-livestatus-$V mk-livestatus;\
+  echo "info.vers = mk-livestatus/$V" >> /tmp/vers.txt;\
+  mkdir -pv /usr/local/etc/nagios/local /usr/local/etc/nagios/objects;\
+  cd /usr/local/nagios/etc.unused/objects;\
+  cp -v contacts.cfg timeperiods.cfg templates.cfg /usr/local/etc/nagios/objects;\
+  cat commands.cfg | sed 's/-p 5$/-p 5 -4/' > /usr/local/etc/nagios/objects/commands.cfg;\
+  install -c -m 0775 -o nagios -g nagios -d /var/opt/nagios;\
+  install -c -m 0775 -o nagios -g nagios -d /var/opt/nagios/archives;\
+  install -c -m 2775 -o nagios -g nagcmd -d /var/opt/nagios/spool/checkresults;\
+  install -c -m 2775 -o nagios -g nagcmd -d /var/opt/nagios/rw;\
+  cd /usr/local/nagios/share;\
+  sed -i.b$(date +%Y%m%d) 's|main.php|cgi-bin/status.cgi?host=all\&servicestatustypes=28|g' index.php;\
+  sed -i.b$(date +%Y%m%d) 's|main.php|cgi-bin/status.cgi?host=all\&servicestatustypes=28|g' side.php;\
+  setcap cap_net_admin,cap_net_raw+p /bin/ping;\
+  S=zlocal-mk-livestatus.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101398-mk_livestatus/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  nagios --version;
+
+ADD config/ /usr/local/etc/nagios/
+ADD scripts/nagios-log.sh /usr/local/bin/
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD supervisord/*.conf /usr/local/etc/supervisord.d/

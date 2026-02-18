@@ -1,0 +1,63 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+ARG VERS
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/pgsql-$VER/bin:$PATH
+
+STOPSIGNAL SIGINT
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libicu-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+    groupdel tape;\
+  fi;\
+  if expr match $OSN centos; then\
+    yum -y install libicu;\
+    yum clean all;\
+  fi;\
+  groupadd -g 26 postgres;\
+  useradd -u 26 -g 26 -m -s /bin/bash postgres;\
+  cd /usr/local;\
+  for V in $VERS; do\
+    curl -sS -L -k -f http://repo/sw/opensource/pgsql/bin/pgsql-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+    [ -e pgsql-${V%.*} ] || ln -snfv pgsql-$V pgsql-${V%.*};\
+    chown -R root:root pgsql-$V;\
+  done;\
+  mkdir -pv /var/opt/pgsql/arch /var/opt/pgsql/data /var/opt/pgsql/dump;\
+  chown postgres:postgres /var/opt/pgsql/arch /var/opt/pgsql/data /var/opt/pgsql/dump;\
+  S=zlocal-pg.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101250-pgsql/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=pgdev.sh;\
+  curl -sS -L -k -f -o /usr/local/bin/$S http://repo/pkb/pb/playbooks/999310-pgdev/files/$S\
+    && (chmod a+x /usr/local/bin/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  for V in $VERS; do\
+    pgsql-$V/bin/postgres --version;\
+  done;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.vers = $VERS";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

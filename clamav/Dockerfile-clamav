@@ -1,0 +1,55 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/clamav-$VER/sbin:/usr/local/clamav-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libxml2 libjson-c5 libmilter-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN centos; then\
+    yum -y install pcre2;\
+    yum clean all;\
+  fi;\
+  groupadd -g 230 clamav;\
+  useradd -u 230 -g 230 -m -s /bin/bash clamav;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/clamav/bin/clamav-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv clamav-$VER clamav;\
+  chown -R root:root clamav-$VER;\
+  mkdir -pv etc/clamav;\
+  mkdir -pv /var/opt/clamav /var/log/clamav;\
+  chown clamav:clamav /var/opt/clamav /var/log/clamav;\
+  ln -snfv /usr/local/etc/clamav/clamd.conf clamav/etc/clamd.conf;\
+  ln -snfv /usr/local/etc/clamav/freshclam.conf clamav/etc/freshclam.conf;\
+  S=zlocal-clamav.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101007-clamav/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  clamconf --version;
+
+ADD config/ /usr/local/etc/clamav/
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

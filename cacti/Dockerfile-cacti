@@ -1,0 +1,69 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/nagios-$VER/bin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/fcgi/lib:$LD_LIBRARY_PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install mariadb-client rrdtool snmp cron;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/cacti/bin/spine-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv spine-$VER spine;\
+  chown -R root:root spine-$VER;\
+  chmod u+s spine/bin/spine;\
+  mkdir -pv cacti;\
+  ln -snfv cacti cacti-$VER;\
+  curl -sS -L -k -f http://repo/sw/opensource/cacti/src/cacti-$VER.tar.gz | tar xzf - --strip-components=1 -C cacti;\
+  chown -R root:root cacti;\
+  mkdir -pv etc/cacti;\
+  ln -snfv /usr/local/etc/cacti/config.php /usr/local/cacti/include;\
+  mv -v cacti/rra cacti/rra.b$(date +%Y%m%d);\
+  mv -v cacti/log cacti/log.b$(date +%Y%m%d);\
+  mv -v cacti/cache cacti/cache.b$(date +%Y%m%d);\
+  mv -v cacti/scripts cacti/scripts.b$(date +%Y%m%d);\
+  mv -v cacti/resource cacti/resource.b$(date +%Y%m%d);\
+  mkdir -pv /var/opt/cacti/rra;\
+  mkdir -pv /var/opt/cacti/log;\
+  mkdir -pv /var/opt/cacti/csrf;\
+  mkdir -pv /var/opt/cacti/cache/boost /var/opt/cacti/cache/mibcache /var/opt/cacti/cache/realtime /var/opt/cacti/cache/spikekill;\
+  mkdir -pv /var/opt/cacti/scripts;\
+  mkdir -pv /var/opt/cacti/resource/script_queries /var/opt/cacti/resource/script_server /var/opt/cacti/resource/snmp_queries;\
+  chown -R none:none /var/opt/cacti;\
+  ln -snfv /var/opt/cacti/rra /usr/local/cacti/;\
+  ln -snfv /var/opt/cacti/log /usr/local/cacti/;\
+  ln -snfv /var/opt/cacti/cache /usr/local/cacti/;\
+  ln -snfv /var/opt/cacti/scripts /usr/local/cacti/;\
+  ln -snfv /var/opt/cacti/resource /usr/local/cacti/;\
+  mv -v cacti/include/themes/modern/images/cacti_logo.svg cacti/include/themes/modern/images/cacti_logo.svg.b$(date +%Y%m%d);\
+  sed -i.b$(date +%Y%m%d) '/pam_loginuid/ s/^/#/' /etc/pam.d/cron;\
+  S=zlocal-cacti.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101400-cacti/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ ! -f /tmp/vers.txt ] || (cat /tmp/vers.txt && rm -f /tmp/vers.txt);\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+ADD supervisord/supervisord-* /usr/local/etc/supervisord.d/

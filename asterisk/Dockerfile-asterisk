@@ -1,0 +1,64 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG TYPE
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/asterisk-$VER/sbin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    if expr match $OSN debian13; then\
+      apt-get -yqq install libxslt1.1 libjansson4 liburiparser1 libodbc2 libneon27\
+      libunbound8 pipewire-audio-client-libraries libpq5 liblua5.2-0 liblua5.3-0 liblua5.4-0 libjack-jackd2-0 libical3 libportaudio2\
+      libsybdb5 libiksemel3 libgsm1 libradcli4 libspandsp2 libradcli4 libsrtp2-1 libvorbisfile3 libspeex1\
+      libspeexdsp1 libsnmp40 libresample1 libcodec2-dev libgmime-3.0-0;\
+    fi;\
+    if expr match $OSN debian11 || expr match $OSN debian12; then\
+      apt-get -yqq install libxslt1.1 libjansson4 liburiparser1 libodbc1 libneon27\
+      libunbound8 pipewire-audio-client-libraries libpq5 liblua5.2-0 liblua5.3-0 liblua5.4-0 libjack-jackd2-0 libical3 libportaudio2\
+      libsybdb5 libiksemel3 libgsm1 libradcli4 libspandsp2 libradcli4 libsrtp2-1 libvorbisfile3 libspeex1\
+      libspeexdsp1 libsnmp40 libresample1 libcodec2-dev libgmime-3.0-0;\
+    fi;\
+    if expr match $OSN debian10; then\
+      apt-get -yqq install libxslt1.1 libjansson4 liburiparser1 libodbc1 libneon27\
+      libunbound8 pipewire libpq5 liblua5.2-0 libjack-jackd2-0 libical3 libportaudio2\
+      libsybdb5 libiksemel3 libgsm1 libradcli4 libspandsp2 libradcli4 libsrtp2-1 libvorbisfile3 libspeex1\
+      libspeexdsp1 libsnmp30 libresample1 libcodec2-dev libgmime-2.6-0 libvorbisenc2;\
+    fi;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  groupadd -g 700 asterisk;\
+  useradd -u 700 -g 700 -c "asterisk" -m -s /bin/bash asterisk;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/asterisk/bin/asterisk-$VER-$OSN-$OSA${TYPE:+-}${TYPE}.tar.gz | tar xzf -;\
+  ln -snfv asterisk-$VER asterisk;\
+  chown -R root:root asterisk-$VER;\
+  mkdir -pv etc/asterisk;\
+  S=zlocal-asterisk.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101990-asterisk/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  asterisk -V;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.type = ${TYPE:-[none]}";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

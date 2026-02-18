@@ -1,0 +1,42 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  cd /usr/local;\
+  mkdir -pv guacamole-client-$VER/extensions /etc/guacamole;\
+  ln -snfv guacamole-client-$VER guacamole-client;\
+  ln -snfv /usr/local/guacamole-client/extensions /etc/guacamole;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-ban-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-duo-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-header-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-jdbc-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-json-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-ldap-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-quickconnect-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-restrict-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-sso-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-auth-totp-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-display-statistics-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-history-recording-storage-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-vault-$VER.tar.gz | tar xzf - --strip-components=1 -C /etc/guacamole/extensions;\
+  curl -sS -L -k -f -o /as-apps/guacamole.war http://repo/sw/opensource/apache-guacamole/bin/client/$VER/guacamole-$VER.war;\
+  ls -l /usr/local;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/

@@ -1,0 +1,15 @@
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd01/ trixie main non-free-firmware
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd02/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd03/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd04/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd05/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd06/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd07/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd08/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd09/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd10/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd11/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd12/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd13/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd14/ trixie main
+deb [trusted=yes] http://apt/sw/linux/debian/13.2/x86_64/dvd15/ trixie main

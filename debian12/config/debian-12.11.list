@@ -1,0 +1,15 @@
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd01/ bookworm main non-free-firmware
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd02/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd03/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd04/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd05/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd06/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd07/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd08/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd09/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd10/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd11/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd12/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd13/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd14/ bookworm main
+deb [trusted=yes] http://apt/sw/linux/debian/12.11/x86_64/dvd15/ bookworm main

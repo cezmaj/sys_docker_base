@@ -1,0 +1,52 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/openldap-$VER/bin:/usr/local/openldap-$VER/sbin:/usr/local/openldap-$VER/libexec:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libdb-dev unixodbc;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN centos; then\
+    yum -y install libdb unixODBC postgresql postgresql-odbc;\
+    yum clean all;\
+  fi;\
+  groupadd -g 55 ldap;\
+  useradd -u 55 -g 55 -m -s /bin/bash ldap;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/openldap/bin/openldap-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv openldap-$VER openldap;\
+  chown -R root:root openldap-$VER;\
+  mkdir -pv /usr/local/etc/openldap /var/opt/openldap;\
+  chown ldap:ldap /var/opt/openldap;\
+  cd /usr/local/etc;\
+  ln -snfv openldap/ldap-server.conf .;\
+  S=zlocal-openldap.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101322-openldap/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ldapwhoami -VV;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

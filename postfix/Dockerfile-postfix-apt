@@ -1,0 +1,38 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  groupadd -g 5000 vmail;\
+  useradd -g 5000 -u 5000 -m vmail;\
+  mkdir -p /var/opt/vmail;\
+  chown vmail:vmail /var/opt/vmail;\
+  chmod 770 /var/opt/vmail;\
+  groupadd -g 840 postfix;\
+  groupadd -g 841 postdrop;\
+  useradd -u 840 -g 840 -m -c Postfix postfix;\
+  echo postfix postfix/main_mailer_type string "Local only"|debconf-set-selections;\
+  echo postfix postfix/mailname string mail.example.com|debconf-set-selections;\
+  apt-get update;\
+  DEBIAN_FRONTEND=noninteractive apt-get -yqq install postfix postfix-pcre spamc;\
+  apt-get clean;\
+  postconf maillog_file=/dev/stdout;\
+  postconf mail_version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM") > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

@@ -1,0 +1,50 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/freeradius-$VER/bin:/usr/local/freeradius-$VER/sbin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libtalloc2;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN centos; then\
+    yum -y install libtalloc openldap;\
+    yum clean all;\
+  fi;\
+  if expr match $OSN rocky; then\
+    yum -y install libtalloc openldap;\
+    yum clean all;\
+  fi;\
+  groupadd -g 95 radiusd;\
+  useradd -u 95 -g 95 -m -s /bin/bash radiusd;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/freeradius/bin/freeradius-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv freeradius-$VER freeradius;\
+  chown -R root:root freeradius-$VER;\
+  mkdir -pv /var/lib/radiusd /var/run/radiusd /var/log/radius/radacct;\
+  chown -v radiusd:radiusd /var/lib/radiusd /var/run/radiusd /var/log/radius/radacct;\
+  ls -l /usr/local;\
+  radiusd -v;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

@@ -1,0 +1,44 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/firefox-$VER:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libgtk-3-0 libasound2 libx11-xcb1 libgl1 libegl1 libpci3 speech-dispatcher;\
+    apt-get -yqq install fonts-lmodern fonts-stix;\
+    apt-get -yqq install fonts-liberation fonts-arphic-ukai fonts-arphic-uming fonts-noto;\
+    apt-get -yqq install fonts-noto-cjk fonts-ipafont-mincho fonts-ipafont-gothic fonts-unfonts-core;\
+    apt-get -yqq install libcanberra-gtk3-module;\
+    apt-get -yqq install ffmpeg libavcodec-dev libavcodec-extra libvpx-dev;\
+    apt-get -yqq install alsa-utils pulseaudio-utils v4l-utils x11-xserver-utils;\
+    apt-get -yqq install xfce4-terminal;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  cd /usr/local;\
+  mkdir -pv firefox-$VER;\
+  ln -snfv firefox-$VER firefox;\
+  curl -sS -L -k -f http://repo/sw/opensource/firefox/bin/firefox-$VER.tar.xz | tar xf - --xz --strip-components=1 -C firefox;\
+  chown -R root:root firefox-$VER;\
+  ls -l /usr/local;\
+  firefox --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ ! -f /tmp/vers.txt ] || (cat /tmp/vers.txt && rm -f /tmp/vers.txt);\
+ ) > /version.d/version-$REPO.txt;

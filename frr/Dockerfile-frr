@@ -1,0 +1,60 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/frr-$VER/bin:/usr/local/frr-$VER/sbin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/libyang/lib:/usr/local/libyang/lib64
+
+RUN set -ex;\
+  mv -v /cmd.d/190-ep-supervisord.sh.disabled /cmd.d/190-ep-supervisord.sh;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq --no-install-recommends install libjson-c5 libprotobuf-c1 libunwind-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  groupadd -g 1666 frr;\
+  groupadd -g 1667 frrvty;\
+  useradd -u 1666 -g 1666 -G 1667 -m -s /bin/bash frr;\
+  useradd -u 1667 -g 1667 -m -s /bin/bash frrvty;\
+  cd /usr/local;\
+  V=$(curl -s http://repo/sw/opensource/libyang/bin/version.txt | grep ^libyang: | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/libyang/bin/libyang-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv libyang-$V libyang;\
+  echo "info.vers = libyang/$V" >> /tmp/vers.txt;\
+  curl -sS -L -k -f http://repo/sw/opensource/frr/bin/frr-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv frr-$VER frr;\
+  mkdir -pv etc/frr;\
+  touch etc/frr/frr.conf;\
+  touch etc/frr/vtysh.conf;\
+  touch etc/frr/zebra.conf;\
+  touch etc/frr/ospfd.conf;\
+  touch etc/frr/vrrpd.conf;\
+  chown frr /run;\
+  S=zlocal-frr.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101810-frr/files/$S\
+    && (chmod a+rx /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  zebra --version | sed '/--/{s/ /\n  /g}';
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+ADD supervisord/supervisord-* /usr/local/etc/supervisord.d/
+CMD ["/cmd.sh"]

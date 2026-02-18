@@ -1,0 +1,53 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/bacula-$VER/bin:/usr/local/psql/bin:$PATH
+
+RUN set -ex;\
+  mv -v /cmd.d/190-ep-supervisord.sh.disabled /cmd.d/190-ep-supervisord.sh;\
+  if expr match $OSN centos || expr match $OSN rocky; then\
+    yum -y update;\
+    yum -y install lzo libpq;\
+    yum clean all;\
+  fi;\
+  groupadd -g 26 postgres;\
+  useradd -u 26 -g 26 -m -s /bin/bash postgres;\
+  cd /usr/local;\
+  V=$(curl -s http://repo/sw/opensource/pgsql/bin/version.txt | grep ^pgsql-16: | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/pgsql/bin/pgsql-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  chown -R root:root pgsql-$V;\
+  ln -snfv pgsql-$V pgsql-${V%.*};\
+  ln -snfv pgsql-${V%.*} psql;\
+  echo "info.vers = pgsql/$V" >> /tmp/vers.txt;\
+  curl -sS -L -k -f http://repo/sw/opensource/bacula/$VER/bin/bacula-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv bacula-$VER bacula;\
+  mkdir -pv etc/bacula/bacula-dir.d /var/opt/bacula /var/log/bacula;\
+  chown root:root etc/bacula/bacula-dir.d;\
+  chmod 0750 etc/bacula/bacula-dir.d;\
+  S=zlocal-bacula.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001012-bacula/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  bconsole -? 2>&1 | grep -i version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+ADD supervisord/supervisord-* /usr/local/etc/supervisord.d/
+CMD ["/cmd.sh"]

@@ -1,0 +1,45 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /opt/nfast/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN centos; then\
+    yum -y install sysvinit-tools;\
+    yum clean all;\
+  fi;\
+  groupadd -g 2001 nfast;\
+  groupadd -g 2002 raserv;\
+  groupadd -g 2003 ncsnmpd;\
+  useradd -u 2001 -g 2001 -m -d /opt/nfast nfast;\
+  useradd -u 2002 -g 2002 -m -d /opt/nfast raserv;\
+  useradd -u 2003 -g 2003 -m -d /opt/nfast ncsnmpd;\
+  mkdir -v /tmp/f;\
+  cd /tmp/f;\
+  curl -sS -L -k -f http://repo/sw/ncipher/secworld/secworld-$VER-linux-$OSA.tar | tar xvf -;\
+  cd /;\
+  find /tmp/f/ -name "*.tar.gz" | xargs -L1 -tr tar xzf;\
+  find /tmp/f/ -name "*.tar" | xargs -L1 -tr tar xf;\
+  rm -rf /tmp/t;\
+  /opt/nfast/sbin/install;\
+  S=zlocal-nfast.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/998110-thales_ncipher/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  enquiry --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

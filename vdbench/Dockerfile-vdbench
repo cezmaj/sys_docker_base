@@ -1,0 +1,36 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/vdbench-$VER:$PATH
+
+RUN set -ex;\
+  cd /usr/local;\
+  mkdir -pv vdbench-$VER;\
+  ln -snfv vdbench-$VER vdbench;\
+  curl -sS -L -k -f -o /tmp/f.zip http://repo/sw/oracle/vdbench/vdbench-$VER.zip;\
+  unzip -d vdbench /tmp/f.zip;\
+  rm -fv /tmp/f.zip;\
+  chown -R root:root vdbench-$VER;\
+  mkdir -pv /work;\
+  mkdir -pv /usr/local/etc/vdbench;
+
+ADD scripts/*.sh /usr/local/bin/
+ADD scripts/*.conf /usr/local/etc/vdbench/
+
+WORKDIR /work
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

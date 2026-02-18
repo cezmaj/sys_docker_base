@@ -1,0 +1,4 @@
+deb [trusted=yes] http://repo/sw/linux/debian/11.2/x86_64/dvd1/ bullseye main contrib
+deb [trusted=yes] http://repo/sw/linux/debian/11.2/x86_64/dvd2/ bullseye main contrib
+deb [trusted=yes] http://repo/sw/linux/debian/11.2/x86_64/dvd3/ bullseye main contrib
+deb [trusted=yes] http://repo/sw/linux/debian/11.2/x86_64/dvd4/ bullseye main contrib

@@ -1,0 +1,12 @@
+[baseos-9.3-dvd1]
+name=baseos-9.3-dvd1
+baseurl=http://yum.dc.local/sw/linux/rocky/9.3/x86_64/dvd1/BaseOS
+[appstream-9.3-dvd1]
+name=appstream-9.3-dvd1
+baseurl=http://yum.dc.local/sw/linux/rocky/9.3/x86_64/dvd1/AppStream
+[baseos-9.3-os]
+name=baseos-9.3-os
+baseurl=http://yum.dc.local/sw/linux/rocky/9.3/x86_64/os/BaseOS
+[appstream-9.3-os]
+name=appstream-9.3-os
+baseurl=http://yum.dc.local/sw/linux/rocky/9.3/x86_64/os/AppStream

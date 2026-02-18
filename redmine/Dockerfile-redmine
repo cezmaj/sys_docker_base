@@ -1,0 +1,72 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/redmine-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq --no-install-recommends install imagemagick;\
+    apt-get -yqq --no-install-recommends install mercurial bzr cvs subversion ghostscript;\
+    apt-get -yqq --no-install-recommends install libssl-dev libgmp-dev libpq-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN centos; then\
+    yum -y install ImageMagick ImageMagick-devel;\
+    yum -y install hg bzr cvs subversion ghostscript;\
+    yum -y install openssl-devel gmp-devel;\
+    yum -y install gcc gcc-c++ make postgresql-devel;\
+    yum clean all;\
+  fi;\
+  groupadd -g 300 redmine;\
+  useradd -u 300 -g 300 -m -s /bin/bash redmine;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/redmine/redmine-$VER.tar.gz | tar xzf -;\
+  ln -snfv redmine-$VER redmine;\
+  chown -R root:root redmine-$VER;\
+  ls -l /usr/local;
+
+ADD config/database-postgresql.yml /usr/local/redmine/config/database.yml
+
+RUN set -ex;\
+  cd /usr/local/redmine;\
+  bundle install --without development test;\
+  ln -snfv /usr/local/etc/redmine/config/database.yml /usr/local/redmine/config/database.yml;\
+  ln -snfv /usr/local/etc/redmine/config/configuration.yml /usr/local/redmine/config/configuration.yml;\
+  ln -snfv /usr/local/etc/redmine/config/initializers/secret_token.rb /usr/local/redmine/config/initializers/secret_token.rb;\
+  mv -v files files.ORG;\
+  mv -v log log.ORG;\
+  mv -v tmp tmp.ORG;\
+  mv -v public/plugin_assets public/plugin_assets.ORG;\
+  ln -sv /var/opt/redmine/files .;\
+  ln -sv /var/opt/redmine/log .;\
+  ln -sv /var/opt/redmine/tmp .;\
+  ln -sv /var/opt/redmine/public/plugin_assets public/;\
+  ln -sv /var/opt/redmine/schema.rb db/;\
+  chown redmine:redmine Gemfile.lock;\
+  mkdir -pv /var/opt/redmine/files /var/opt/redmine/log /var/opt/redmine/tmp/pdf /var/opt/redmine/public/plugin_assets;\
+  chown -R redmine:redmine /var/opt/redmine/*;\
+  chmod -R 755 /var/opt/redmine/*;\
+  gem install thin;\
+  echo 'gem "thin"' >> /usr/local/redmine/Gemfile;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

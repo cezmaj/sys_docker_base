@@ -1,0 +1,27 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+ADD config/context.xml /var/opt/tomcat/conf/
+
+RUN set -ex;\
+  curl -sS -L -k -f -o /as-apps/nxmc.war http://repo/sw/opensource/netxms/war/nxmc-$VER.war;\
+  ls -l /usr/local;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/

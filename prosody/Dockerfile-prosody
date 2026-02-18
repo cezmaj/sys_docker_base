@@ -1,0 +1,48 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/prosody-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install lua5.2 lua-expat lua-socket lua-filesystem lua-sec libidn11-dev libssl-dev;\
+    apt-get -yqq install lua-ldap;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  groupadd -g 821 prosody;\
+  useradd -u 821 -g 821 -c "Prosody XMPP server" -m -s /bin/bash prosody;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/prosody/bin/prosody-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv prosody-$VER prosody;\
+  mkdir -pv prosody-modules;\
+  curl -sS -L -k -f http://repo/sw/opensource/prosody-modules/bin/prosody-modules.tar.gz | tar xzf - --strip-components=1 -C prosody-modules;\
+  ln -snfv /usr/local/prosody-modules/mod_auth_ldap2/mod_auth_ldap2.lua /usr/local/prosody/lib/prosody/modules;\
+  ln -snfv /usr/local/prosody-modules/mod_lib_ldap/ldap.lib.lua /usr/local/prosody/lib/prosody/modules;\
+  ln -snfv /usr/local/prosody-modules/mod_storage_ldap/mod_storage_ldap.lua /usr/local/prosody/lib/prosody/modules;\
+  ln -snfv /usr/local/prosody-modules/mod_storage_ldap/ldap /usr/local/prosody/lib/prosody/modules;\
+  ln -snfv /usr/local/prosody-modules/mod_log_auth/mod_log_auth.lua /usr/local/prosody/lib/prosody/modules;\
+  mkdir -pv /var/opt/prosody /var/log/prosody /run/prosody;\
+  chown prosody:prosody /var/opt/prosody /var/log/prosody /run/prosody;\
+  prosodyctl --config=/usr/local/prosody/etc/prosody/prosody.cfg.lua about;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

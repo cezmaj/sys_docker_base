@@ -1,0 +1,36 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+ARG URL
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/jdk-$VER/bin:$PATH
+ENV JAVA_HOME /usr/local/jdk-$VER
+
+RUN set -ex;\
+  if expr match $OSN centos; then\
+    yum -y install freetype alsa-lib libXext libX11 libXrender libXtst libXi;\
+    yum -y install fontconfig dejavu-sans-fonts;\
+    yum clean all;\
+  fi;\
+  cd /usr/local;\
+  mkdir -pv jdk-$VER;\
+  ln -snfv jdk-$VER jdk-${VER%%.*};\
+  curl -sS -L -k -f $URL | tar xzf - --strip-components=1 -C jdk-$VER;\
+  chown -R root:root jdk-$VER;\
+  ls -l /usr/local;\
+  java -version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

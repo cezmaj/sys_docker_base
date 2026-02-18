@@ -1,0 +1,30 @@
+version: 0.1
+log:
+  level: info
+  fields:
+    service: registry
+storage:
+  cache:
+    blobdescriptor: inmemory
+  filesystem:
+    rootdirectory: /var/opt/registry
+  delete:
+    enabled: false
+http:
+  addr: 0.0.0.0:5443
+  prefix: /reg/scr/
+  secret: deadbeefdeadbeef
+  tls:
+    key: /usr/local/etc/pki/rsa-key-host-scr.pem
+    certificate: /usr/local/etc/pki/rsa-crt-host-scr.pem
+  headers:
+    X-Content-Type-Options: [nosniff]
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3
+auth:
+  htpasswd:
+    realm: scr.dc.local
+    path: /usr/local/etc/registry/htpasswd

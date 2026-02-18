@@ -1,0 +1,52 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG TYPE
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/ssp-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install ldap-utils;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+    echo "TLS_REQCERT allow" >> /etc/ldap/ldap.conf;\
+  fi;\
+  if expr match $OSN centos; then\
+    echo "TLS_REQCERT allow" >> /etc/openldap/ldap.conf;\
+  fi;\
+  cd /usr/local;\
+  V=$(curl -s http://repo/sw/opensource/smarty/src/version.txt | grep ^smarty: | awk '{print $2}');\
+  mkdir -pv smarty-$V;\
+  ln -snfv smarty-$V smarty;\
+  curl -sS -L -k -f http://repo/sw/opensource/smarty/src/smarty-$V.tar.gz | tar xzf - --strip-components=2 -C smarty;\
+  mkdir -pv /usr/share/php;\
+  ln -snfv /usr/local/smarty /usr/share/php/smarty${V%%.*};\
+  mkdir ssp-$VER;\
+  ln -snfv ssp-$VER ssp;\
+  curl -sS -L -k -f http://repo/sw/opensource/ssp/src/self-service-password-$VER.tar.gz | tar xzf - --strip-components=1 -C ssp;\
+  mkdir -pv ssp/templates_c;\
+  chmod 777 ssp/templates_c;\
+  mkdir -pv /usr/local/etc/ssp;\
+  touch /usr/local/etc/ssp/config.inc.local.php;\
+  ln -snfv /usr/local/etc/ssp/config.inc.local.php /usr/local/ssp/conf/;\
+  grep SMARTY_VERSION /usr/local/smarty/Smarty.class.php;\
+  grep '^.version' /usr/local/ssp/htdocs/index.php;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.type = ${TYPE:-[none]}";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

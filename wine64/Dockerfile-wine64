@@ -1,0 +1,64 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/wine64-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libwayland-dev;\
+    apt-get -yqq install libxkbregistry-dev;\
+    apt-get -yqq install libvulkan-dev;\
+    apt-get -yqq install libfontconfig-dev;\
+    apt-get -yqq install libpcap-dev;\
+    apt-get -yqq install libx11-dev;\
+    apt-get -yqq install libxrandr-dev;\
+    apt-get -yqq install libxext-dev;\
+    apt-get -yqq install libxfixes-dev;\
+    apt-get -yqq install libxi-dev;\
+    apt-get -yqq install libxinerama-dev;\
+    apt-get -yqq install libxcursor-dev;\
+    apt-get -yqq install libxxf86vm-dev;\
+    apt-get -yqq install libxcomposite-dev;\
+    apt-get -yqq install libavcodec-dev;\
+    apt-get -yqq install libpulse-dev;\
+    apt-get -yqq install libopengl-dev;\
+    apt-get -yqq install libavformat-dev;\
+    apt-get -yqq install libcups2-dev;\
+    apt-get -yqq install libv4l-dev;\
+    apt-get -yqq install libegl-dev;\
+    apt-get -yqq install libgstreamer1.0-dev;\
+    apt-get -yqq install ocl-icd-opencl-dev;\
+    apt-get -yqq install opencl-c-headers;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/wine/bin/wine64-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv wine64-$VER wine64;\
+  chown -R root:root wine64-$VER;\
+  S=zlocal-wine.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/008120-wine/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  wine --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

@@ -1,0 +1,39 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/coturn-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libevent-dev sqlite3 libsqlite3-dev libsystemd-dev libpq-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  groupadd -g 822 coturn;\
+  useradd -u 822 -g 822 -c "Coturn STUN/TURN server" -m -s /bin/bash coturn;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/coturn/bin/coturn-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv coturn-$VER coturn;\
+  ls -l /usr/local;\
+  turnserver --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

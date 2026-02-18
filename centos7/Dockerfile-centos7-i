@@ -1,0 +1,36 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG TYPE
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV LANG=en_US.utf8
+ENV TZ=Europe/Warsaw
+ENV OS_NAME=centos7
+ENV OS_ARCH=x86_64
+
+RUN set -ex;\
+  rpm --import /etc/pki/rpm-gpg/*;\
+  yum -y update;\
+  yum -y install net-tools iproute nmap lsof strace telnet git curl wget bind-utils which unzip;\
+  yum clean all;\
+  cat /etc/redhat-release;
+
+RUN set -ex;\
+  mkdir -p /cmd.d /version.d;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.type = ${TYPE:-[none]}";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]* /cmd.d/
+ADD scripts/cmd.sh /

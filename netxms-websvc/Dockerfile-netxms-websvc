@@ -1,0 +1,29 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  curl -sS -L -k -f -o /as-apps/netxms-websvc.war http://repo/sw/opensource/netxms/war/netxms-websvc-$VER.war;\
+  mkdir -pv /usr/local/etc/netxms-websvc;\
+  ln -sv /usr/local/etc/netxms-websvc/nxapisrv.properties /as-prop/;\
+  ls -l /usr/local;
+
+ADD config/nxapisrv.properties /usr/local/etc/netxms-websvc
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/

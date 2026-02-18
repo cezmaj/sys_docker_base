@@ -1,0 +1,35 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/wildfly/bin:$PATH
+
+RUN set -ex;\
+  groupadd -g 460 wildfly;\
+  useradd -u 460 -g 460 -c "WildFly Application Server" -m -s /bin/bash wildfly;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/wildfly/bin/wildfly-$VER.Final.tar.gz | tar xzf -;\
+  ln -snfv wildfly-$VER.Final wildfly;\
+  chown -R wildfly:wildfly wildfly-$VER.Final;\
+  ln -sv /usr/local/wildfly/welcome-content /as-root;\
+  ln -sv /usr/local/wildfly/standalone/deployments /as-apps;\
+  echo wildfly $VER > /as-root/index.html;\
+  mkdir -pv /var/opt/tomcat/conf;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

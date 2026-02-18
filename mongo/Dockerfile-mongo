@@ -1,0 +1,38 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/mongodb-$VER/bin:$PATH
+
+RUN set -ex;\
+  groupadd -g 980 mongod;\
+  useradd -u 980 -g 980 -m -s /bin/bash mongod;\
+  cd /usr/local;\
+  mkdir -pv mongodb-$VER;\
+  ln -snfv mongodb-$VER mongodb;\
+  curl -sS -L -k -f http://repo/sw/opensource/mongodb/bin/mongodb-linux-x86_64-rhel70-$VER.tgz | tar xzf - --strip-components=1 -C mongodb;\
+  mkdir -pv /var/opt/mongo /var/log/mongo;\
+  chown mongod:mongod /var/opt/mongo /var/log/mongo;\
+  S=zlocal-mongo.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101280-mongodb/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  mongod --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

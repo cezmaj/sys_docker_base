@@ -1,0 +1,40 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/prometheus-$VER:$PATH
+
+RUN set -ex;\
+  cd /usr/local;\
+  mkdir -pv prometheus-$VER;\
+  ln -snfv prometheus-$VER prometheus;\
+  curl -sS -L -k -f http://repo/sw/opensource/prometheus/bin/prometheus-$VER.linux-amd64.tar.gz | tar xvzf - --strip-components=1 -C prometheus;\
+  chown -R root:root prometheus-$VER;\
+  mkdir -pv etc/prometheus;\
+  mkdir -pv /var/opt/prometheus;\
+  S=zlocal-prometheus.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101403-prometheus/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  prometheus --version;
+
+ADD config/ /usr/local/etc/prometheus/
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

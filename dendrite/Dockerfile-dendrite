@@ -1,0 +1,33 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/dendrite-$VER/bin:$PATH
+
+RUN set -ex;\
+  groupadd -g 831 dendrite;\
+  useradd -u 831 -g 831 -m dendrite;\
+  mkdir -pv /var/log/dendrite;\
+  chown dendrite:dendrite /var/log/dendrite;\
+  curl -sS -L -k -f http://repo/sw/opensource/matrix/bin/dendrite-$VER-$OSN-$OSA.tar.gz | tar xzf - -C /usr/local;\
+  cd /usr/local;\
+  ln -snfv dendrite-$VER dendrite;\
+  create-account -version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

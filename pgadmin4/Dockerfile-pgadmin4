@@ -1,0 +1,62 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/pgadmin4-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian13; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install python3-distutils-extra;\
+    apt-get -yqq install python3-virtualenv;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN debian12; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install python3-distutils python3-lib2to3;\
+    apt-get -yqq install python3-virtualenv;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/pgadmin4/bin/pgadmin4-$VER-$OSN-venv.tar.gz | tar xzf -;\
+  ln -snfv pgadmin4-$VER pgadmin4;\
+  ln -snfv /usr/local/pgadmin4/bin/activate /usr/local/bin;\
+  ln -snfv /usr/local/pgadmin4/bin/pgadmin4 /usr/local/bin;\
+  ln -snfv /usr/local/pgadmin4/bin/pgadmin4-cli /usr/local/bin;\
+  V=$(pip show gunicorn | grep -i ^version: | awk '{print $2}');\
+  echo "info.vers = gunicorn/$V" >> /tmp/vers.txt;\
+  mkdir -pv /var/opt/pgadmin4;\
+  chown -Rv none:none /var/opt/pgadmin4;\
+  S=$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])');\
+  mkdir -pv /usr/local/etc/pgadmin4;\
+  ln -snfv /usr/local/etc/pgadmin4/config_local.py $S/pgadmin4/;\
+  ls -l /usr/local;\
+  pip show gunicorn;\
+  pip show pgadmin4;
+
+ADD config/config_local.py /usr/local/etc/pgadmin4/
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

@@ -1,0 +1,37 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/munge-$VER/bin:/usr/local/munge-$VER/sbin:$PATH
+
+RUN set -ex;\
+  mv -v /cmd.d/190-ep-supervisord.sh.disabled /cmd.d/190-ep-supervisord.sh;\
+  groupadd -g 910 munge;\
+  useradd -u 910 -g 910 -m -s /bin/bash munge;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/munge/bin/munge-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv munge-$VER munge;\
+  chown -R root:root munge-$VER;\
+  mkdir -pv /usr/local/etc/munge /var/lib/munge /var/log/munge /var/run/munge;\
+  chown munge:munge /usr/local/etc/munge /var/lib/munge /var/log/munge /var/run/munge;\
+  chmod 700 /usr/local/etc/munge /var/lib/munge;\
+  munged -V;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD supervisord/supervisord-*.conf /usr/local/etc/supervisord.d
+CMD ["/cmd.sh"]

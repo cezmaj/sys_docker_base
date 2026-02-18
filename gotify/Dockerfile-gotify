@@ -1,0 +1,42 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/gotify-$VER:$PATH
+
+RUN set -ex;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  mkdir -pv gotify-$VER;\
+  ln -snfv gotify-$VER gotify;\
+  V=$(curl -s http://repo/sw/opensource/gotify/bin/version.txt | grep ^gotify-cli: | awk '{print $2}');\
+  curl -sS -L -k -f -o gotify/gotify-cli http://repo/sw/opensource/gotify/bin/gotify-cli-$V-linux-amd64;\
+  chmod a+x gotify/gotify-cli;\
+  curl -sS -L -k -f -o /tmp/f.zip http://repo/sw/opensource/gotify/bin/gotify-$VER-linux-amd64.zip;\
+  unzip -d gotify /tmp/f.zip;\
+  rm -fv /tmp/f.zip;\
+  chown -R root:root gotify-$VER;\
+  cd gotify;\
+  ln -snfv gotify-linux-amd64 gotify;\
+  mkdir -pv /var/opt/gotify;\
+  chown none:none /var/opt/gotify;\
+  ls -l /usr/local;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

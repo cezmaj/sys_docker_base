@@ -1,0 +1,38 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/keycloak-$VER/bin:$PATH
+
+RUN set -ex;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/keycloak/bin/keycloak-$VER.tar.gz | tar xzf -;\
+  ln -snfv keycloak-$VER keycloak;\
+  chown -R none:none keycloak-$VER;\
+  mkdir -pv /var/opt/keycloak/data;\
+  chown none:none /var/opt/keycloak/data;\
+  ln -snfv /var/opt/keycloak/data keycloak/data;\
+  mkdir -pv /usr/local/etc/keycloak;\
+  ls -l /usr/local;\
+  kc.sh --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

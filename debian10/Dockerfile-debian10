@@ -1,0 +1,97 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG TYPE
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV LANG=en_US.utf8
+ENV TZ=Europe/Warsaw
+
+ENV OS_NAME=debian10
+ENV OS_ARCH=x86_64
+ENV OS_CODE=buster
+
+ENV OSN=debian10
+ENV OSA=x86_64
+ENV OSC=buster
+
+ADD config/debian-$VER.list config/debian-$VER-updates.list /etc/apt/sources.list.d/
+
+RUN set -ex;\
+  sed -i.b$(date +%Y%m%d) -e 's/^deb/#deb/' /etc/apt/sources.list;\
+  grep ^[^#] /etc/apt/sources.list /etc/apt/sources.list.d/*;\
+  export DEBIAN_FRONTEND=noninteractive;\
+  apt-get update;\
+  apt-get -yqq --no-install-recommends --no-install-suggests install locales libterm-readline-perl-perl;\
+  localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8;\
+  apt-get -yqq install net-tools iproute2 traceroute nmap lsof telnet iputils-ping;\
+  apt-get -yqq install git curl wget unzip debconf-utils python-setuptools apt-utils ;\
+  apt-get -yqq install jq vim file tree;\
+  apt-get clean;\
+  rm -rf /var/lib/apt/lists/*;\
+  S=zlocal-0001.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001610-debian10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-0002.bash;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001610-debian10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-0010.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001610-debian10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-ip.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001610-debian10/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-readme.bash;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/001500-linux_admin/files/$S\
+    && (chmod a+x /etc/profile.d/$S && mkdir -p /usr/local/etc/doc)\
+    || (echo Script $S not available);\
+  S=zlocal-cdev-image.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/999210-cdev/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  cat /etc/os-release;\
+  cat /etc/debian_version;
+
+RUN set -ex;\
+  curl -sS -L -k -f http://repo/sw/opensource/python-modules/pip.tar.gz | tar xzf - -C /tmp;\
+  python /tmp/pip/$(ls /tmp/pip|grep py2.py3|head -1)/pip install --no-index --find-links=/tmp/pip --upgrade pip;\
+  rm -rf /tmp/pip;\
+  pip install --no-index --trusted-host repo --find-links=http://repo/sw/opensource/python-modules/supervisor/ supervisor;\
+  ln -sv /usr/local/etc/supervisord.conf /etc;\
+  mkdir -pv /usr/local/etc/supervisord.d;\
+  S=zlocal-supervisor.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/008330-supervisor/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  supervisord --version;
+
+ADD config/supervisord.conf /usr/local/etc
+
+RUN set -ex;\
+  curl -sS -L -k -f -o /tini http://repo/sw/opensource/tini/bin/tini-amd64-current;\
+  chmod a+x /tini;\
+  /tini --version;
+
+RUN set -ex;\
+  mkdir -pv /cmd.d /version.d;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.type = ${TYPE:-[none]}";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+ADD scripts/cmd.sh /
+CMD ["/bin/bash","-l"]

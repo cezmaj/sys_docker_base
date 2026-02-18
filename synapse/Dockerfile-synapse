@@ -1,0 +1,47 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/synapse-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install python3-distutils python3-lib2to3;\
+    apt-get -yqq install build-essential python3-dev libffi-dev sqlite3 libssl-dev python3-virtualenv libxslt1-dev;\
+    apt-get -yqq install libpq-dev python3-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/matrix/bin/synapse-$VER-$OSN-venv.tar.gz | tar xzf -;\
+  ln -snfv synapse-$VER synapse;\
+  chown none:none synapse-$VER;\
+  ln -snfv /usr/local/synapse/bin/activate /usr/local/bin;\
+  ln -snfv /usr/local/synapse/bin/synapse_homeserver /usr/local/bin;\
+  ln -snfv /usr/local/synapse/bin/synapse_port_db /usr/local/bin;\
+  ln -snfv /usr/local/synapse/bin/synapse_review_recent_signups /usr/local/bin;\
+  mkdir -pv /var/opt/synapse/database /var/opt/synapse/media_store;\
+  chown none:none /var/opt/synapse/database /var/opt/synapse/media_store;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

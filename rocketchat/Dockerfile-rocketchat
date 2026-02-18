@@ -1,0 +1,39 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  if expr match $OSN centos; then\
+    yum -y install gcc-c++ make;\
+  fi;\
+  groupadd -g 811 rchat;\
+  useradd -u 811 -g 811 -m -s /bin/bash rchat;\
+  cd /usr/local;\
+  mkdir -pv rocketchat-$VER;\
+  ln -snfv rocketchat-$VER rocketchat;\
+  curl -sS -L -k -f http://repo/sw/opensource/rocketchat/bin/rocketchat-$VER.tgz | tar xzf - --strip-components=1 -C rocketchat;\
+  cd rocketchat/programs/server;\
+  npm install semver;\
+  npm install;\
+  npm audit || true;\
+  npm audit fix;\
+  npm audit || true;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

@@ -1,0 +1,30 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/rust-$VER/bin:$PATH
+
+RUN set -ex;\
+  cd /usr/local;\
+  mkdir /tmp/t;\
+  curl -sS -L -k -f http://repo/sw/opensource/rust/bin/rust-$VER-$OSA-unknown-linux-gnu.tar.xz | tar xJf - --strip-components=1 -C /tmp/t;\
+  /tmp/t/install.sh --prefix=/usr/local/rust-$VER;\
+  rm -rf /tmp/t;\
+  ln -snfv rust-$VER rust;\
+  chown -R root:root rust-$VER;\
+  rustc --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

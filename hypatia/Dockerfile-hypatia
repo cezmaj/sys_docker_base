@@ -1,0 +1,67 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/bin:$PATH
+
+RUN set -ex;\
+  mv -v /cmd.d/200-ep-clamd.sh /cmd.d/200-ep-clamd.sh.disabled;\
+  if expr match $OSN debian13; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install openjdk-21-jre openjdk-21-jdk;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN debian12; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install openjdk-17-jre openjdk-17-jdk;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  cd /usr/local;\
+  V=$(curl -s http://repo/sw/malkom/hypatia-cli/jar/version.txt | grep ^hypatia-cli: | awk '{print $2}');\
+  mkdir -pv hypatia-cli-$V;\
+  ln -snfv hypatia-cli-$V hypatia-cli;\
+  curl -sS -L -k -f -o hypatia-cli/hypatia-cli.jar http://repo/sw/malkom/hypatia-cli/jar/hypatia-cli-$V.jar;\
+  S=hypatia_clamav.sh;\
+  curl -sS -L -k -f -o /usr/local/bin/$S http://repo/pkb/pb/playbooks/101007-hypatia/files/$S\
+    && (chmod a+x /usr/local/bin/$S)\
+    || (echo Script $S not available);\
+  S=hypatia_eset.sh;\
+  curl -sS -L -k -f -o /usr/local/bin/$S http://repo/pkb/pb/playbooks/101007-hypatia/files/$S\
+    && (chmod a+x /usr/local/bin/$S)\
+    || (echo Script $S not available);\
+  S=hypatia_stalkerware.sh;\
+  curl -sS -L -k -f -o /usr/local/bin/$S http://repo/pkb/pb/playbooks/101007-hypatia/files/$S\
+    && (chmod a+x /usr/local/bin/$S)\
+    || (echo Script $S not available);\
+  S=hypatia_targetedthreats.sh;\
+  curl -sS -L -k -f -o /usr/local/bin/$S http://repo/pkb/pb/playbooks/101007-hypatia/files/$S\
+    && (chmod a+x /usr/local/bin/$S)\
+    || (echo Script $S not available);\
+  S=hypatia_bloom.sh;\
+  curl -sS -L -k -f -o /usr/local/bin/$S http://repo/pkb/pb/playbooks/101007-hypatia/files/$S\
+    && (chmod a+x /usr/local/bin/$S)\
+    || (echo Script $S not available);\
+  mkdir -pv /var/opt/hypatia;\
+  java -version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

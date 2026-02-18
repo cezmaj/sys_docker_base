@@ -1,0 +1,38 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/openconnect-$VER/sbin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libgnutls28-dev libxml2-dev gettext libssl-dev pkg-config zlib1g-dev liblz4-dev libproxy-dev libkrb5-dev;\
+    apt-get -yqq install trousers libatspi2.0-dev libtss2-dev;\
+    apt-get -yqq install vpnc vpnc-scripts;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/openconnect/bin/openconnect-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv openconnect-$VER openconnect;\
+  openconnect -V;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

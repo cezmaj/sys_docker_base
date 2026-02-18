@@ -1,0 +1,10 @@
+global:
+  smtp_smarthost: 'smtp.dc.local:25'
+  smtp_from: 'alert@dc.local'
+route:
+  receiver: email-admin
+  group_by: [alertname]
+receivers:
+  - name: email-admin
+    email_configs:
+      - to: 'admin@dc.local'

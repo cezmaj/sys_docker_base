@@ -1,0 +1,30 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/roundcube-$VER/maintenance:$PATH
+
+RUN set -ex;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/roundcube/roundcubemail-$VER-complete.tar.gz | tar xzf -;\
+  ln -snfv roundcubemail-$VER roundcube;\
+  chown root:root -R roundcubemail-$VER;\
+  cd roundcube;\
+  ln -snfv /usr/local/etc/roundcube/config/config.inc.php config/;\
+  ls -l /usr/local;\
+  grep Version index.php;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

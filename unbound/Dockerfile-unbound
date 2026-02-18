@@ -1,0 +1,32 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/unbound-$VER/sbin:$PATH
+
+RUN set -ex;\
+  groupadd -g 891 unbound;\
+  useradd -u 891 -g 891 -m -s /bin/bash unbound;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/unbound/bin/unbound-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv unbound-$VER unbound-${VER%.*};\
+  ls -l /usr/local;\
+  unbound -V;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

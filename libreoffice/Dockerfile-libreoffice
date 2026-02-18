@@ -1,0 +1,33 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  mkdir -pv /tmp/t;\
+  curl -sS -L -o /tmp/t/LO.tar.gz http://repo/sw/opensource/libreoffice/bin/LibreOffice_${VER}_Linux_x86-64_rpm.tar.gz;\
+  gzip -dc /tmp/t/LO.tar.gz | tar xvf - --strip-components=1 -C /tmp/t;\
+  yum -y install cairo cups-libs libSM libICE;\
+  yum -y install /tmp/t/RPMS/*.rpm;\
+  yum clean all;\
+  rm -rf /tmp/t;\
+  ln -snfv /usr/bin/libreoffice$(IFS=".";set -- $VER;echo $1.$2) /usr/bin/libreoffice;\
+  libreoffice --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ENTRYPOINT ["/tini","--"]
+CMD ["/bin/bash"]

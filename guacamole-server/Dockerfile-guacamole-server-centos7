@@ -1,0 +1,48 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/guacamole-server-$VER/bin:/usr/local/guacamole-server-$VER/sbin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/guacamole-server/lib:/usr/local/ffmpeg/lib:/usr/local/libwebsockets/lib
+
+STOPSIGNAL SIGKILL
+
+RUN set -ex;\
+  if expr match $OSN centos; then\
+    yum -y install uuid libwebp libssh2 freerdp libvncserver cairo pango numactl-libs;\
+    yum -y install xorg-x11-fonts-* urw-base35-*;\
+    yum clean all;\
+  fi;\
+  cd /usr/local;\
+  V=$(curl -s http://repo/sw/opensource/ffmpeg/bin/version.txt | grep ^ffmpeg: | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/ffmpeg/bin/ffmpeg-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv ffmpeg-$V ffmpeg-${V%%.*};\
+  ln -snfv ffmpeg-${V%%.*} ffmpeg;\
+  V=$(curl -s http://repo/sw/opensource/libwebsockets/bin/version.txt | grep ^libwebsockets: | awk '{print $2}');\
+  curl -sS -L -k -f http://repo/sw/opensource/libwebsockets/bin/libwebsockets-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv libwebsockets-$V libwebsockets;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-guacamole/bin/server/guacamole-server-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv guacamole-server-$VER guacamole-server;\
+  chown -R root:root guacamole-server-$VER;\
+  ln -snfv /usr/local/guacamole-server/usr/lib64/freerdp2/libguac-common-svc-client.so /usr/lib64/freerdp2;\
+  ln -snfv /usr/local/guacamole-server/usr/lib64/freerdp2/libguacai-client.so /usr/lib64/freerdp2;\
+  mkdir -pv /etc/guacamole;\
+  guacd -v;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

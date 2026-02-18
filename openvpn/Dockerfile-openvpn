@@ -1,0 +1,50 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/openvpn-$VER/sbin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/openssl/lib64
+
+RUN set -ex;\
+  mv -v /cmd.d/190-ep-supervisord.sh.disabled /cmd.d/190-ep-supervisord.sh;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install liblzo2-dev libpam0g-dev libsystemd0 libcap-ng-dev liblz4-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/openvpn/bin/openvpn-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv openvpn-$VER openvpn;\
+  chown -R root:root openvpn-$VER;\
+  mkdir -pv /usr/local/etc/openvpn;\
+  S=zlocal-openvpn.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101050-openvpn/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  openssl version;\
+  openvpn --version|fold -w 60 -s;
+
+ADD scripts/openvpn-log.sh /usr/local/bin/
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+ADD supervisord/*.conf /usr/local/etc/supervisord.d/
+CMD ["/cmd.sh"]

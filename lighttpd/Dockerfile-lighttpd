@@ -1,0 +1,49 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/lighttpd-$VER/sbin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install libpcre2-dev liblua5.4-dev nettle-dev;\
+    apt-get -yqq install libssl-dev libldap2-dev libxml2-dev libsqlite3-dev;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/lighttpd/bin/lighttpd-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv lighttpd-$VER lighttpd;\
+  chown -R root:root lighttpd-$VER;\
+  mkdir -pv etc/lighttpd;\
+  mkdir -pv /var/opt/lighttpd/html;\
+  chown -R none:none /var/opt/lighttpd;\
+  ln -snfv /var/opt/lighttpd/html /html;\
+  echo lighttpd-$INFO_VER > /html/index.html;\
+  ls -l /usr/local;\
+  lighttpd -V;\
+  lighttpd -v;
+
+ADD config/ /usr/local/etc/lighttpd/
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

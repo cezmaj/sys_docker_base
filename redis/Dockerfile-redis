@@ -1,0 +1,39 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /opt/local/redis-$VER/bin:$PATH
+
+RUN set -ex;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  mkdir -pv /opt/local;\
+  cd /opt/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/redis/bin/redis-$VER-$OSN-$OSA.tar.gz | tar xzf -;\
+  ln -snfv redis-$VER redis;\
+  chown -R root:root redis-$VER;\
+  mkdir -pv etc/redis;\
+  cp -v redis/etc/redis.conf etc/redis;\
+  cp -v redis/etc/sentinel.conf etc/redis;\
+  mkdir -pv /var/opt/redis/data;\
+  chown none:none /var/opt/redis/data;\
+  ls -l /opt/local;\
+  redis-server --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

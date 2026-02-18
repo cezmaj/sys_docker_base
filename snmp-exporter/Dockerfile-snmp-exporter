@@ -1,0 +1,36 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/snmp_exporter-$VER:$PATH
+
+RUN set -ex;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  mkdir -pv snmp_exporter-$VER;\
+  ln -snfv snmp_exporter-$VER snmp_exporter;\
+  curl -sS -L -k -f http://repo/sw/opensource/prometheus/bin/snmp_exporter-$VER.linux-amd64.tar.gz | tar xvzf - --strip-components=1 -C snmp_exporter;\
+  chown -R root:root snmp_exporter-$VER;\
+  mkdir -pv etc/snmp_exporter;\
+  ln -snfv /usr/local/snmp_exporter/snmp.yml /usr/local/etc/snmp_exporter/snmp.yml;\
+  ls -l /usr/local;\
+  snmp_exporter --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

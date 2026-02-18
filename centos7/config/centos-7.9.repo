@@ -1,0 +1,9 @@
+[everything-7.9]
+name=everything-7.9
+baseurl=https://yum.dc.local/sw/linux/centos/7.9/x86_64/dvd2
+sslverify=0
+
+[updates-7.9]
+name=updates-7.9
+baseurl=https://yum.dc.local/sw/linux/centos/7.9/x86_64/updates
+sslverify=0

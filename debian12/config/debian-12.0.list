@@ -1,0 +1,9 @@
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd1/ bookworm main non-free-firmware
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd2/ bookworm main
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd3/ bookworm main
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd4/ bookworm main
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd5/ bookworm main
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd6/ bookworm main
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd7/ bookworm main
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd8/ bookworm main
+deb [trusted=yes] http://repo/sw/linux/debian/12.0/x86_64/dvd9/ bookworm main

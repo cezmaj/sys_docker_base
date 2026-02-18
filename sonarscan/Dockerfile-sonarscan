@@ -1,0 +1,30 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/sonar-scanner-$VER/bin:$PATH
+
+RUN set -ex;\
+  groupadd -g 435 sonarqube;\
+  useradd -u 435 -g 435 -c "SonarQube" -m -s /bin/bash sonarqube;\
+  cd /usr/local;\
+  curl -sS -L -k -f -o /tmp/f.zip http://repo/sw/opensource/sonar-scanner/bin/sonar-scanner-cli-$VER.zip;\
+  unzip -q /tmp/f.zip;\
+  rm -fv /tmp/f.zip;\
+  ln -snfv sonar-scanner-$VER sonar-scanner;\
+  sonar-scanner --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

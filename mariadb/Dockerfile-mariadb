@@ -1,0 +1,64 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+ARG VERS
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/mariadb-$VER/bin:$PATH
+
+STOPSIGNAL SIGTERM
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq --no-install-recommends install numactl liblzo2-dev libncurses-dev liburing2;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  if expr match $OSN centos; then\
+    yum -y update;\
+    yum -y install numactl-libs lzo;\
+    yum clean all;\
+  fi;\
+  groupadd -g 672 mysql;\
+  useradd -u 672 -g 672 -m -s /bin/bash mysql;\
+  cd /usr/local;\
+  for V in $VERS; do\
+    curl -sS -L -k -f http://repo/sw/opensource/mariadb/bin/mariadb-$V-$OSN-$OSA.tar.gz | tar xzf -;\
+    [ -e mariadb-${V%.*} ] || ln -snfv mariadb-$V mariadb-${V%.*};\
+    chown -R root:root mariadb-$V;\
+  done;\
+  mkdir -pv /var/opt/mysql/data /var/log/mysql;\
+  chown mysql:mysql /var/opt/mysql/data /var/log/mysql;\
+  S=zlocal-mariadb.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101260-mariadb/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=mydev.sh;\
+  curl -sS -L -k -f -o /usr/local/bin/$S http://repo/pkb/pb/playbooks/999320-mydev/files/$S\
+    && (chmod a+x /usr/local/bin/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;\
+  for V in $VERS; do\
+    mariadb-$V/bin/mariadbd -V;\
+    mariadb-$V/bin/mariadb -V;\
+  done;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.vers = $VERS";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

@@ -1,0 +1,49 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/gitolite-$VER:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install git;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  groupadd -g 321 git;\
+  useradd -u 321 -g 321 -m -s /bin/bash git;\
+  echo git:$(tr -dc 'A-Za-z0-9%=' < /dev/urandom | head -c 16) | chpasswd;\
+  cd /usr/local;\
+  mkdir -pv gitolite;\
+  ln -snfv gitolite gitolite-$VER;\
+  mkdir -pv /tmp/d;\
+  curl -sS -L -k -f http://repo/sw/opensource/gitolite/src/gitolite-$VER.tar.gz | tar xzf - --strip-components=1 -C /tmp/d;\
+  /tmp/d/install -to /usr/local/gitolite;\
+  rm -rf /tmp/d;\
+  echo $VER > /usr/local/gitolite/VERSION;\
+  ln -snfv /usr/local/gitolite/gitolite /usr/local/bin;\
+  ln -snfv /usr/local/gitolite/gitolite-shell /usr/local/bin;\
+  mkdir -pv /usr/local/lib/site_perl;\
+  ln -snfv /usr/local/gitolite/lib/Gitolite /usr/local/lib/site_perl;\
+  S=zlocal-git.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101523-scm_git/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  ls -l /usr/local;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;

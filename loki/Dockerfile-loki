@@ -1,0 +1,43 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/loki-$VER:$PATH
+
+RUN set -ex;\
+  cd /usr/local;\
+  mkdir -pv loki-$VER;\
+  ln -snfv loki-$VER loki;\
+  curl -sS -L -k -f -o /tmp/f.zip http://repo/sw/opensource/loki/bin/loki-$VER-linux-amd64.zip;\
+  unzip -d loki /tmp/f.zip;\
+  curl -sS -L -k -f -o /tmp/f.zip http://repo/sw/opensource/loki/bin/promtail-$VER-linux-amd64.zip;\
+  unzip -d loki /tmp/f.zip;\
+  curl -sS -L -k -f -o /tmp/f.zip http://repo/sw/opensource/loki/bin/logcli-$VER-linux-amd64.zip;\
+  unzip -d loki /tmp/f.zip;\
+  rm -fv /tmp/f.zip;\
+  chown -R root:root loki-$VER;\
+  cd loki;\
+  ln -sv loki-linux-amd64 loki;\
+  ln -sv promtail-linux-amd64 promtail;\
+  ln -sv logcli-linux-amd64 logcli;\
+  mkdir -pv /usr/local/etc/loki /var/opt/loki;\
+  ls -l /usr/local;\
+  loki --version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

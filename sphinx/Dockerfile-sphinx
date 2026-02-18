@@ -1,0 +1,84 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/sphinx-$VER/bin:$PATH
+
+RUN set -ex;\
+  if expr match $OSN debian; then\
+    export DEBIAN_FRONTEND=noninteractive;\
+    apt-get update;\
+    apt-get -yqq install latexmk texlive-fonts-recommended texlive-latex-recommended texlive-latex-extra;\
+    apt-get -yqq install gnuplot rsync graphviz;\
+    if expr match $OSN debian13; then\
+      apt-get -yqq install openjdk-21-jre openjdk-21-jdk;\
+      apt-get -yqq install python3-virtualenv python3-distutils-extra;\
+    fi;\
+    if expr match $OSN debian12; then\
+      apt-get -yqq install openjdk-17-jre openjdk-17-jdk;\
+      apt-get -yqq install python3-virtualenv python3-distutils python3-lib2to3;\
+    fi;\
+    apt-get clean;\
+    rm -rf /var/lib/apt/lists/*;\
+  fi;\
+  [ -z "$(id -g none)" ] && groupadd -g 666 none;\
+  [ -z "$(id -u none)" ] && useradd -u 666 -g 666 -m -s /bin/bash none;\
+  cd /usr/local;\
+  V=$(curl -s http://repo/sw/opensource/plantuml/jar/version.txt | grep ^plantuml: | awk '{print $2}');\
+  mkdir -pv plantuml-$V;\
+  ln -snfv plantuml-$V plantuml;\
+  curl -sS -L -k -f -o plantuml/plantuml.jar http://repo/sw/opensource/plantuml/jar/plantuml-$V.jar;\
+  S=zlocal-plantuml.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/502092-plantuml/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=plantuml.sh;\
+  curl -sS -L -k -f -o /usr/local/bin/$S http://repo/pkb/pb/playbooks/502092-plantuml/files/$S\
+    && (chmod a+x /usr/local/bin/$S)\
+    || (echo Script $S not available);\
+  ln -snfv /usr/local/bin/$S /usr/bin/plantuml;\
+  echo "info.vers = plantuml/$V" >> /tmp/vers.txt;\
+  V=$(curl -s http://repo/sw/opensource/pandoc/bin/version.txt | grep ^pandoc: | awk '{print $2}');\
+  mkdir -v pandoc-$V;\
+  ln -snfv pandoc-$V pandoc;\
+  curl -sS -L -k -f http://repo/sw/opensource/pandoc/bin/pandoc-$V-linux-amd64.tar.gz | tar xzf - --strip-components=1 -C pandoc;\
+  ln -snfv /usr/local/pandoc/bin/pandoc /usr/bin;\
+  echo "info.vers = pandoc/$V" >> /tmp/vers.txt;\
+  cd /usr/local;\
+  curl -sS -L -k -f http://repo/sw/opensource/sphinx/bin/sphinx-$VER-$OSN-venv.tar.gz | tar xzf -;\
+  ln -snfv sphinx-$VER sphinx;\
+  chown -R none:none sphinx-$VER;\
+  mkdir -pv /var/opt/sphinx;\
+  chown -R none:none /var/opt/sphinx;\
+  touch /.bash_history_all;\
+  chmod a+rw /.bash_history_all;\
+  S=zlocal-git.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/101523-scm_git/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=zlocal-sphinx.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/501220-sphinx/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  pandoc --version;\
+  java -jar /usr/local/plantuml/plantuml.jar -version;\
+  sphinx-build --version;
+
+ADD scripts/spx.sh /usr/local/bin
+WORKDIR /var/opt/sphinx
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;

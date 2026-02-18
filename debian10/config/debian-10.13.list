@@ -1,0 +1,6 @@
+deb [trusted=yes] http://repo/sw/linux/debian/10.13/x86_64/dvd1/ buster main contrib
+deb [trusted=yes] http://repo/sw/linux/debian/10.13/x86_64/dvd2/ buster main contrib
+deb [trusted=yes] http://repo/sw/linux/debian/10.13/x86_64/dvd3/ buster main contrib
+deb [trusted=yes] http://repo/sw/linux/debian/10.13/x86_64/dvd4/ buster main contrib
+deb [trusted=yes] http://repo/sw/linux/debian/10.13/x86_64/dvd5/ buster main contrib
+deb [trusted=yes] http://repo/sw/linux/debian/10.13/x86_64/dvd6/ buster main contrib

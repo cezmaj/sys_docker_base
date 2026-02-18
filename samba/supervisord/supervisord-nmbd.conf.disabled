@@ -1,0 +1,8 @@
+[program:nmbd]
+command=/cmd.d/200-ep-nmbd.sh
+user=root
+autostart=true
+autorestart=true
+redirect_stderr=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0

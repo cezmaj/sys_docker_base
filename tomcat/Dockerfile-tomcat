@@ -1,0 +1,50 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/tomcat-$VER/bin:$PATH
+
+RUN set -ex;\
+  groupadd -g 91 tomcat;\
+  useradd -u 91 -g 91 -c "Apache Tomcat" -m -s /bin/bash tomcat;\
+  cd /usr/local;\
+  mkdir -pv tomcat-$VER;\
+  ln -snfv tomcat-$VER tomcat-${VER%.*};\
+  ln -snfv tomcat-${VER%.*} tomcat;\
+  curl -sS -L -k -f http://repo/sw/opensource/apache-tomcat/bin/apache-tomcat-$VER.tar.gz | tar xzf - --strip-components=1 -C tomcat;\
+  chown -R root:tomcat tomcat-$VER;\
+  ls -l /usr/local;
+
+RUN set -ex;\
+  mkdir -pv /var/opt/tomcat;\
+  cd /var/opt/tomcat;\
+  mkdir -pv conf logs temp webapps work;\
+  chown tomcat:tomcat conf logs temp webapps work;\
+  cp -v /usr/local/tomcat-$VER/conf/* conf;\
+  cp -v conf/server.xml conf/server.xml.ORG;\
+  chown -R tomcat:tomcat conf;\
+  mkdir -pv webapps/ROOT;\
+  ln -sv /var/opt/tomcat/webapps/ROOT /as-root;\
+  ln -sv /var/opt/tomcat/webapps /as-apps;\
+  ln -sv /usr/local/tomcat/lib /as-prop;\
+  echo tomcat $VER > /as-root/index.html;\
+  catalina.sh version;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ ! -f /tmp/vers.txt ] || (cat /tmp/vers.txt && rm -f /tmp/vers.txt);\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]

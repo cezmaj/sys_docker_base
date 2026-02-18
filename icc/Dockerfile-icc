@@ -1,0 +1,43 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+
+RUN set -ex;\
+  if expr match $OSN rocky; then\
+    yum -y install gcc gcc-c++ ucx libfabric;\
+    yum clean all;\
+  fi;\
+  curl -sS -L -o /tmp/f.sh http://repo//sw/intel/oneapi_single_components/l_dpcpp-cpp-compiler_p_${VER}_offline.sh;\
+  sh /tmp/f.sh -a -s --eula=accept --intel-sw-improvement-program-consent=decline;\
+  V=$(curl -s http://repo/sw/intel/oneapi_single_components/version.txt | grep ^mpi_oneapi: | awk '{print $2}');\
+  curl -sS -L -o /tmp/f.sh http://repo//sw/intel/oneapi_single_components/l_mpi_oneapi_p_${V}_offline.sh;\
+  sh /tmp/f.sh -a -s --eula=accept --intel-sw-improvement-program-consent=decline;\
+  echo "info.vers = impi/$V" >> /tmp/vers.txt;\
+  rm -fv /tmp/f.sh;\
+  /opt/intel/oneapi/modulefiles-setup.sh --output-dir=/usr/local/etc/modulefiles-intel-oneapi --force;\
+  S=zlocal-intel-oneapi.sh;\
+  curl -sS -L -k -f -o /etc/profile.d/$S http://repo/pkb/pb/playbooks/203009-intel_oneapi/files/$S\
+    && (chmod a+x /etc/profile.d/$S)\
+    || (echo Script $S not available);\
+  S=intel-oneapi;\
+  curl -sS -L -k -f -o /usr/local/etc/modulefiles/$S http://repo/pkb/pb/playbooks/203009-intel_oneapi/files/$S\
+    && (chmod a+r /usr/local/etc/modulefiles/$S)\
+    || (echo Script $S not available);\
+  /opt/intel/oneapi/installer/installer --list-products;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+  [ -f /tmp/vers.txt ] && (cat /tmp/vers.txt && rm -f /tmp/vers.txt) || true;\
+ ) > /version.d/version-$REPO.txt;

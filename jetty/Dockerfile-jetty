@@ -1,0 +1,48 @@
+ARG FROM
+FROM $FROM
+
+ARG DATE
+ARG FROM
+ARG REPO
+ARG VER
+
+LABEL info.from="$FROM"
+LABEL info.name="$REPO:$VER"
+LABEL info.date="$DATE"
+
+ENV INFO_DATE=$DATE INFO_REPO=$REPO INFO_VER=$VER INFO_FROM=$FROM
+ENV PATH /usr/local/jetty-$VER/bin:$PATH
+
+RUN set -ex;\
+  groupadd -g 461 jetty;\
+  useradd -u 461 -g 461 -c "Jetty Application Server" -m -s /bin/bash jetty;\
+  cd /usr/local;\
+  mkdir -pv jetty-$VER;\
+  ln -snfv jetty-$VER jetty;\
+  curl -sS -L -k -f http://repo/sw/opensource/jetty/bin/jetty-home-$VER.tar.gz | tar xzf - --strip-components=1 -C jetty;\
+  chown -R root:jetty jetty-$VER;
+
+RUN set -ex;\
+  mkdir -pv /var/opt/jetty/default;\
+  cd /var/opt/jetty/default;\
+  if expr match $VER 12; then\
+    java -jar /usr/local/jetty/start.jar --create-startd --add-modules=server,http,ee10-deploy,ee10-jsp,ext,resources;\
+  else\
+    java -jar /usr/local/jetty/start.jar --create-startd --add-to-start=server,http,deploy,jsp,jstl,ext,resources,websocket;\
+  fi;\
+  mkdir -pv webapps/ROOT;\
+  echo \<%= \"jetty $VER\" %\> > webapps/ROOT/index.jsp;\
+  chown -R jetty:root /var/opt/jetty/default;\
+  ln -sv /var/opt/jetty/default/webapps/ROOT /as-root;\
+  ln -sv /var/opt/jetty/default/webapps /as-apps;\
+  mkdir -pv /var/opt/tomcat/conf;\
+  sed -i.ORG 's|> /dev/null &||' /usr/local/jetty/bin/jetty.sh;
+
+RUN set -ex;\
+ (echo "info.date = $DATE";\
+  echo "info.name = $REPO:$VER";\
+  echo "info.from = $FROM";\
+ ) > /version.d/version-$REPO.txt;
+
+ADD scripts/[0-9]*.sh /cmd.d/
+CMD ["/cmd.sh"]
